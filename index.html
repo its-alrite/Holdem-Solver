@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Hold’em Equity Solver</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Hold’em">
+<meta name="theme-color" content="#0f3d2a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root{--bg:#f4f1ea;--sf:#fff;--ink:#1d2320;--mut:#6b746f;--ln:#dcd8cc;--ac:#1f7a52;--red:#c8372d;--tie:#d9a23b;--lose:#c9c4b6;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1714;--sf:#17221d;--ink:#e8efe9;--mut:#8fa097;--ln:#2a3a33;--ac:#3fbf86;--red:#ff6b5e;--tie:#e0b254;--lose:#33443c;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1714;--sf:#17221d;--ink:#e8efe9;--mut:#8fa097;--ln:#2a3a33;--ac:#3fbf86;--red:#ff6b5e;--tie:#e0b254;--lose:#33443c;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;touch-action:manipulation;margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.w{max-width:760px;margin:0 auto;padding:18px 14px 40px}
+h1{font:700 22px/1.2 Georgia,"Times New Roman",serif;margin:4px 0 2px}
+.sub,.mut{color:var(--mut)}.sub{margin:0 0 14px;font-size:14px}
+.p{background:var(--sf);border:1px solid var(--ln);border-radius:14px;padding:14px;margin-bottom:12px}
+h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:0 0 10px;font-weight:600}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.slot{width:46px;height:64px;border-radius:8px;border:1.5px dashed var(--ln);background:transparent;color:var(--ink);font:600 19px system-ui;cursor:pointer;padding:0;display:grid;place-items:center}
+.slot.f{border-style:solid;background:var(--bg)}
+.slot.on{border-color:var(--ac);box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 28%,transparent)}
+.slot span{display:flex;flex-direction:column;align-items:center;line-height:1.05}.slot small{font-size:17px}
+.r{color:var(--red)}#board .slot:nth-child(3){margin-right:10px}#board .slot:nth-child(4){margin-right:4px}
+.vr{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}.vr>span{width:68px;font-size:13px;color:var(--mut)}.vr em{font-size:12px;color:var(--mut)}
+.ct{display:flex;align-items:center;gap:8px;margin-left:auto}
+.b{border:1px solid var(--ln);background:var(--bg);color:var(--ink);border-radius:8px;padding:6px 12px;font:inherit;cursor:pointer}
+.b.sq{width:34px;padding:6px 0}
+#deck{display:grid;grid-template-columns:repeat(13,1fr);gap:3px}
+.dc{aspect-ratio:.78;border:1px solid var(--ln);background:var(--bg);color:var(--ink);border-radius:5px;padding:0;font:600 12px system-ui;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05;letter-spacing:-.4px}
+.dc.r{color:var(--red)}.dc small{font-size:11px}.dc:disabled{opacity:.18;cursor:default}
+.big{font:700 44px/1 Georgia,serif;color:var(--ac)}
+.bar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--lose);margin:10px 0 6px}
+.bar i{display:block}.leg{display:flex;gap:14px;font-size:13px;flex-wrap:wrap}.leg b{font-weight:600}
+.hr{display:grid;grid-template-columns:120px 1fr 48px;gap:8px;align-items:center;font-size:13px;margin:5px 0}
+.hr div{height:8px;background:var(--lose);border-radius:4px;overflow:hidden}.hr div i{display:block;height:100%;background:var(--ac)}.hr span:last-child{text-align:right;color:var(--mut)}
+.in{display:flex;gap:10px;flex-wrap:wrap}.in label{font-size:12px;color:var(--mut);display:flex;flex-direction:column;gap:3px}
+.in input{font-size:16px;-webkit-user-select:text;user-select:text;width:110px;padding:7px 9px;border:1px solid var(--ln);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+#od{margin-top:10px}.g{color:var(--ac)}#od .r{color:var(--red)}
+</style></head><body><div class="w">
+<h1>Hold’em Equity Solver</h1>
+<p class="sub">Tap a slot, then tap a card. Leave a villain empty to give them a random hand.</p>
+<div class="p"><h2>Your hand</h2><div class="row" id="hero"></div></div>
+<div class="p"><h2>Board <span class="mut" style="text-transform:none;letter-spacing:0">(flop · turn · river)</span></h2><div class="row" id="board"></div></div>
+<div class="p"><div class="row" style="margin-bottom:10px"><h2 style="margin:0">Opponents</h2><div class="ct"><button class="b sq" id="minus">−</button><b id="nv">1</b><button class="b sq" id="plus">+</button></div></div><div id="vs"></div></div>
+<div class="p"><div class="row" style="margin-bottom:10px"><h2 style="margin:0">Deck</h2><button class="b" id="clear" style="margin-left:auto">Clear all</button></div><div id="deck"></div></div>
+<div class="p"><h2>Equity</h2><div id="res"></div></div>
+<div class="p"><h2>Pot odds</h2><div class="in"><label>Pot (including their bet)<input id="pot" type="number" min="0" inputmode="decimal" value="100"></label><label>Bet to call<input id="call" type="number" min="0" inputmode="decimal" value="50"></label></div><div id="od"></div><p class="mut" style="font-size:12px;margin:8px 0 0">Uses raw equity from the simulation and ignores future betting.</p></div>
+</div>
+<script>
+const R="23456789TJQKA",S="♠♥♦♣",HN=["High card","Pair","Two pair","Three of a kind","Straight","Flush","Full house","Four of a kind","Straight flush"];
+const $=id=>document.getElementById(id),rk=r=>r==8?"10":R[r],pc=x=>(x*100).toFixed(1)+"%";
+const sh=m=>{const k=(m<<1)|(m>>12&1);for(let h=13;h>=4;h--)if(((k>>(h-4))&31)===31)return h-1;return -1};
+const enc=(c,a)=>{let v=c;for(let i=0;i<5;i++)v=v*16+(a[i]||0);return v};
+function ev(cs){
+ const rc=new Array(13).fill(0),sc=[0,0,0,0],sm=[0,0,0,0];let all=0;
+ for(const c of cs){const r=c>>2,s=c&3;rc[r]++;sc[s]++;sm[s]|=1<<r;all|=1<<r}
+ let fs=-1;for(let s=0;s<4;s++)if(sc[s]>=5)fs=s;
+ if(fs>=0){const x=sh(sm[fs]);if(x>=0)return enc(8,[x])}
+ const q=[],t=[],p=[],o=[];
+ for(let r=12;r>=0;r--){const n=rc[r];if(n==4)q.push(r);else if(n==3)t.push(r);else if(n==2)p.push(r);else if(n==1)o.push(r)}
+ if(q.length)return enc(7,[q[0],Math.max(t[0]??-1,p[0]??-1,o[0]??-1)]);
+ if(t.length&&(t.length>1||p.length))return enc(6,[t[0],Math.max(t[1]??-1,p[0]??-1)]);
+ if(fs>=0){const a=[];for(let r=12;r>=0&&a.length<5;r--)if(sm[fs]>>r&1)a.push(r);return enc(5,a)}
+ const x=sh(all);if(x>=0)return enc(4,[x]);
+ if(t.length)return enc(3,[t[0],o[0],o[1]]);
+ if(p.length>=2)return enc(2,[p[0],p[1],Math.max(p[2]??-1,o[0]??-1)]);
+ if(p.length)return enc(1,[p[0],o[0],o[1],o[2]]);
+ return enc(0,o.slice(0,5));
+}
+const cards={};let nv=1,active="h0",eq=null,tm=0,runId=0;
+const keys=()=>{const k=["h0","h1","b0","b1","b2","b3","b4"];for(let i=0;i<nv;i++)k.push("v"+i+"_0","v"+i+"_1");return k};
+const red=c=>(c&3)==1||(c&3)==2;
+const face=c=>c==null?"":`<span class="${red(c)?"r":""}">${rk(c>>2)}<small>${S[c&3]}</small></span>`;
+const slot=k=>`<button class="slot${active==k?" on":""}${cards[k]!=null?" f":""}" data-k="${k}">${face(cards[k])}</button>`;
+function draw(){
+ $("hero").innerHTML=slot("h0")+slot("h1");
+ $("board").innerHTML=[0,1,2,3,4].map(i=>slot("b"+i)).join("");
+ $("vs").innerHTML=Array.from({length:nv},(_,i)=>`<div class="vr"><span>Villain ${i+1}</span><div class="row">${slot("v"+i+"_0")+slot("v"+i+"_1")}</div><em>${cards["v"+i+"_0"]==null&&cards["v"+i+"_1"]==null?"random hand":""}</em></div>`).join("");
+ $("nv").textContent=nv;
+ const used=new Set(Object.values(cards)),d=[];
+ for(let s=0;s<4;s++)for(let r=12;r>=0;r--){const c=r*4+s;d.push(`<button class="dc${red(c)?" r":""}" data-c="${c}"${used.has(c)?" disabled":""}>${rk(r)}<small>${S[s]}</small></button>`)}
+ $("deck").innerHTML=d.join("");
+}
+const queue=()=>{clearTimeout(tm);tm=setTimeout(run,120)};
+document.addEventListener("click",e=>{
+ const s=e.target.closest(".slot");
+ if(s){const k=s.dataset.k;delete cards[k];active=k;draw();queue();return}
+ const d=e.target.closest(".dc");
+ if(d&&!d.disabled){
+  const ks=keys();if(!active)active=ks.find(k=>cards[k]==null);if(!active)return;
+  cards[active]=+d.dataset.c;const i=ks.indexOf(active);active=null;
+  for(let j=1;j<=ks.length;j++){const k=ks[(i+j)%ks.length];if(cards[k]==null){active=k;break}}
+  draw();queue();
+ }
+});
+$("minus").onclick=()=>{if(nv>1){delete cards["v"+(nv-1)+"_0"];delete cards["v"+(nv-1)+"_1"];nv--;if(!keys().includes(active))active=null;draw();queue()}};
+$("plus").onclick=()=>{if(nv<8){nv++;draw();queue()}};
+$("clear").onclick=()=>{for(const k in cards)delete cards[k];active="h0";draw();queue()};
+$("pot").oninput=$("call").oninput=()=>odds();
+function odds(){
+ const el=$("od");if(eq==null){el.innerHTML="";return}
+ const pot=+$("pot").value||0,call=+$("call").value||0;
+ if(call<=0){el.innerHTML=`<span class="mut">Enter a bet to call to compare it with your equity.</span>`;return}
+ const need=call/(pot+call),e=eq*pot-(1-eq)*call;
+ el.innerHTML=`Required equity <b>${pc(need)}</b> · Your equity <b>${pc(eq)}</b><br>EV of calling <b class="${e>=0?"g":"r"}">${e>=0?"+":"−"}${Math.abs(e).toFixed(2)}</b> — ${e>=0?"calling is profitable":"folding is better"}`;
+}
+function run(){
+ const id=++runId,H=[cards.h0,cards.h1];
+ if(H[0]==null||H[1]==null){eq=null;$("res").innerHTML=`<span class="mut">Pick your two hole cards to see your equity.</span>`;odds();return}
+ const B=[0,1,2,3,4].map(i=>cards["b"+i]).filter(x=>x!=null),V=[];
+ for(let i=0;i<nv;i++)V.push([cards["v"+i+"_0"],cards["v"+i+"_1"]]);
+ const used=new Set([...H,...B,...V.flat().filter(x=>x!=null)]),deck=[];
+ for(let c=0;c<52;c++)if(!used.has(c))deck.push(c);
+ const nb=5-B.length,need=nb+V.flat().filter(x=>x==null).length,N=40000,CH=4000;
+ let done=0;const T={w:0,t:0,e:0,ve:Array(nv).fill(0),cat:Array(9).fill(0)};
+ (function step(){
+  if(id!=runId)return;
+  const end=Math.min(N,done+CH);
+  for(;done<end;done++){
+   for(let i=0;i<need;i++){const j=i+(Math.random()*(deck.length-i)|0);[deck[i],deck[j]]=[deck[j],deck[i]]}
+   let p=nb;const bd=B.concat(deck.slice(0,nb)),hs=ev(H.concat(bd));let top=hs;
+   const vs=V.map(v=>{const s=ev(v.map(x=>x==null?deck[p++]:x).concat(bd));if(s>top)top=s;return s});
+   let n=hs==top?1:0;vs.forEach(s=>{if(s==top)n++});
+   if(hs==top){T.e+=1/n;n==1?T.w++:T.t++}
+   vs.forEach((s,i)=>{if(s==top)T.ve[i]+=1/n});T.cat[hs>>20]++;
+  }
+  paint(T,done,N);
+  if(done<N)setTimeout(step,0);
+ })();
+}
+function paint(T,n,N){
+ eq=T.e/n;const w=T.w/n,t=T.t/n,l=1-w-t;
+ const cats=T.cat.map((c,i)=>[i,c/n]).filter(x=>x[1]>0).reverse();
+ $("res").innerHTML=`<div class="row" style="justify-content:space-between;align-items:flex-end"><div><div class="big">${pc(eq)}</div><div class="mut" style="font-size:13px">your equity</div></div><div class="mut" style="font-size:12px">${n<N?"Simulating… "+Math.round(n/N*100)+"%":n.toLocaleString("en-US")+" simulations"}</div></div>
+ <div class="bar"><i style="width:${w*100}%;background:var(--ac)"></i><i style="width:${t*100}%;background:var(--tie)"></i></div>
+ <div class="leg"><span><b style="color:var(--ac)">Win</b> ${pc(w)}</span><span><b style="color:var(--tie)">Tie</b> ${pc(t)}</span><span><b class="mut">Lose</b> ${pc(l)}</span></div>
+ <h2 style="margin:16px 0 6px">Opponent equity</h2>${T.ve.map((v,i)=>`<div class="hr"><span>Villain ${i+1}</span><div><i style="width:${v/n*100}%"></i></div><span>${pc(v/n)}</span></div>`).join("")}
+ <h2 style="margin:16px 0 6px">Your final hand</h2>${cats.map(([i,x])=>`<div class="hr"><span>${HN[i]}</span><div><i style="width:${x*100}%"></i></div><span>${pc(x)}</span></div>`).join("")}`;
+ odds();
+}
+draw();run();
+if("serviceWorker" in navigator)addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+</script></body></html>
